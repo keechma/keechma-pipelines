@@ -1,5 +1,7 @@
 # keechma/pipelines
 
+[![Clojars Project](https://img.shields.io/clojars/v/keechma/pipelines.svg)](https://clojars.org/keechma/pipelines)
+
 Keechma/pipelines library is a manager for asynchronous and concurrent ClojureScript code. **It is a part of the [Keechma/next](https://github.com/keechma/keechma-next) stack but is not dependent on Keechma/next and can be used in any ClojureScript codebase.** It uses no global state and has minimal dependencies.
 
 ## Motivation
@@ -296,7 +298,7 @@ Let's implement a very simple live search:
     pp/restartable))
 ```
 
-That's it. There is no boilerplate, there is no book-keeping.
+That's it. No boilerplate, no book-keeping.
 
 **There is an extensive test suite, and you can consult it for more examples.**
 

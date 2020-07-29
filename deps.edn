@@ -3,7 +3,8 @@
         org.clojure/clojurescript {:mvn/version "1.10.764"}
         com.fulcrologic/guardrails {:mvn/version "0.0.12"}
         funcool/promesa {:mvn/version "5.1.0"}
-        medley {:mvn/version "1.3.0"}}
+        medley {:mvn/version "1.3.0"}
+        org.clojure/core.async {:mvn/version "1.3.610"}}
  :aliases
  {:test {:extra-paths ["test"]
          :extra-deps [thheller/shadow-cljs {:mvn/version "2.10.17"}]
