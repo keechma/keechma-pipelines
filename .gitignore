@@ -1,0 +1,17 @@
+/target
+/classes
+/checkouts
+*.jar
+*.class
+/.cpcache
+/.lein-*
+/.nrepl-history
+/.nrepl-port
+.hgignore
+.hg/
+/.idea
+/.shadow-cljs
+/keechma-pipelines.iml
+/public/test/js
+pom.xml
+pom.xml.asc
