@@ -21,7 +21,8 @@
   (stop! [this])
   (report-error [this error])
   (get-pipeline-instance* [this ident])
-  (get-state* [this]))
+  (get-state* [this])
+  (get-active [this]))
 
 (defprotocol IPipeline
   (->resumable [this pipeline-name value]))
@@ -106,7 +107,7 @@
 
 (defn execute [runtime context ident action value error get-interpreter-state]
   (try
-    (let [val (action value context error)]
+    (let [val (action value (assoc context :pipeline/runtime runtime :pipeline/ident ident) error)]
       (cond
         (and (fn? val) (pipeline-step? val))
         (val runtime context value error {:parent ident :interpreter-state (get-interpreter-state)})
@@ -562,6 +563,24 @@
   (cancel-all [this idents]
     (doseq [ident idents]
       (cancel this ident)))
+  (get-active [this]
+    (let [state @state*]
+      (reduce-kv
+        (fn [m k v]
+          (let [idents (:queue v)]
+            (if (seq idents)
+              (let [info (reduce
+                           (fn [acc ident]
+                             (assoc acc ident {:config (get-in state [:pipelines k :config])
+                                               :state (get-in state [:instances ident :state])
+                                               :args (get-in state [:instances ident :resumable :args])
+                                               :ident ident}))
+                           {}
+                           idents)]
+                (assoc m k info))
+              m)))
+        {}
+        (:queues state))))
   (stop! [this]
     (remove-watch state* ::watcher)
     (let [instances (:instances @state*)

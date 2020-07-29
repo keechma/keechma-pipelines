@@ -9,6 +9,9 @@
 (def has-pipeline? runtime/has-pipeline?)
 (def invoke runtime/invoke)
 (def in-pipeline? runtime/in-pipeline?)
+(def get-active runtime/get-active)
+(def cancel runtime/cancel)
+(def cancel-all runtime/cancel-all)
 
 (defn set-queue
   "Explicitly set the queue name. Second argument can be a function in which case, it will be called with the pipeline arguments and should return a queue name"

@@ -1145,3 +1145,45 @@
         (p/map #(p/delay 50))
         (p/map #(is (= [:wrap 2] @state*)))
         (p/map done)))))
+
+(deftest querying-runtime
+  (let [log* (atom [])
+        invoke-without-blocking (fn [runtime k]
+                                  (pp/invoke runtime k)
+                                  nil)
+        pipelines {:inc (pipeline! [value ctx]
+                          (p/delay 10)
+                          (inc value))
+                   :dec (pipeline! [value ctx]
+                          (p/delay 10)
+                          (inc value))
+                   :runtime-query (pipeline! [value {:pipeline/keys [runtime ident]}]
+                                    (pp/swap! log* conj (set (keys (pp/get-active runtime))))
+                                    (let [active           (pp/get-active runtime)
+                                          idents-to-cancel (->> (vals active)
+                                                             (mapcat (fn [v] (keys v)))
+                                                             (remove #(= ident %)))]
+                                      (pp/cancel-all runtime idents-to-cancel)
+                                      (-> (pipeline! [value {:pipeline/keys [runtime ident]}]
+                                            (pp/swap! log* conj (set (keys (pp/get-active runtime))))
+                                            (invoke-without-blocking runtime :inc)
+                                            (pp/swap! log* conj (set (keys (pp/get-active runtime)))))
+                                        (pp/set-queue :inner)))
+                                    )}
+        runtime (start! {} pipelines)]
+    (async done
+      (invoke runtime :inc)
+      (invoke runtime :dec)
+      (->> (invoke runtime :runtime-query)
+        (p/map (fn []
+                 (is (= [#{:inc :dec :runtime-query}
+                         #{:runtime-query :inner}
+                         #{:inc :runtime-query :inner}]
+                       @log*))
+                 (is (= [:inc] (keys (pp/get-active runtime))))
+                 (let [idents-to-cancel (->> (vals (pp/get-active runtime))
+                                          (mapcat #(keys %)))]
+                   (pp/cancel-all runtime idents-to-cancel)
+                   (is (= nil (keys (pp/get-active runtime))))
+                   (stop! runtime)
+                   (done))))))))
