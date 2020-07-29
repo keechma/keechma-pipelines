@@ -462,6 +462,43 @@ Keechma/pipelines runtime can be stopped. When the runtime is stopped, all runni
 (stop! runtime) ;; Stops the runtime and cancels all running pipelines 
 ```
 
+### Runtime options
+
+Runtime accepts an optional options map. Available options are:
+
+- `:transactor`
+- `:watcher`
+- `:error-reporter`
+- `:on-cancel`
+
+```clojure
+(def runtime (start! {:state* (atom nil)} pipelines, opts))
+```
+
+#### `:transactor`
+
+Keechma/pipelines will synchronously execute as many steps as possible. These blocks can be wrapped in a transaction function:
+
+```clojure
+(defn custom-transactor [transaction-fn]
+  (println "Before transaction")
+  (let [res (transaction-fn)]
+    (println "After transaction")
+    res))
+```
+
+#### `:watcher`
+
+Keechma/pipelines keeps its state in an internal atom. If you want to be informed when the state changes, pass a function under the `:watcher` key.
+
+#### `:error-reporter`
+
+Function that will be called whenever a pipeline encounters unhandled error. 
+
+#### `:on-cancel`
+
+If the pipeline has a promise in-flight at the moment of cancellation, this function will be called with that promise as the argument. You can use this to cancel any XHR requests or do whatever cleanup might be appropriate for your app.
+
 ## Conclusion
 
 Keechma/pipelines is a very simple library, that brings a lot of value to the table. You can start using them today, they don't require a big commitment and will not affect the rest of your code. If you have any feedback, please reach out to us in the #keechma channel on the clojurians slack.
