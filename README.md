@@ -50,7 +50,7 @@ Let's start with a trivial example. We will implement a pipeline that will incre
 
 (def runtime (start! {} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns 3
+(invoke runtime :inc-3 0) ;; Returns 3
 ```
 
 This is a lot of code that just calls `inc` three times. It gets better. For now, let's go through the code:
@@ -85,7 +85,7 @@ Let's make the example slightly more complicated, in this case we'll implement t
 
 (def runtime (start! {} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
+(invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
 ```
 
 In this case, `async-inc` is called between the two synchronous `inc` calls, but the `inc` function doesn't know about it - pipeline runtime will ensure that promise is resolved before proceeding to the next step. 
@@ -124,7 +124,7 @@ This is all cool, but real applications need to mutate the state somehow. In the
 
 (def runtime (start! {:state* (atom nil)} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
+(invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
 ```
 
 `pipeline-reset!` function behaves like a normal `clojure.core/reset!` except it returns `nil`. Returning `nil` will ensure that the pipeline `value` is not changed. Keechma/pipelines provides you with the `reset!` and `swap!` functions that can be used inside pipelines - `keechma.pipelines.core.reset!` and `keechma.pipelines.core.swap!`.
@@ -170,7 +170,7 @@ In the real world, functions can and will throw errors, and promises will someti
 
 (def runtime (start! {:state* (atom nil)} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns a promise that will resolve to 3
+(invoke runtime :inc-3 0) ;; Returns a promise that will resolve to 3
 ```
 
 In this case, when pipeline encounters a rejected promise (or if a synchronous function throws), it will stop executing its main body, and switch to the `rescue!` block.
@@ -220,7 +220,7 @@ In some cases, you'll want to run some code regardless if the pipeline encounter
 
 (def runtime (start! {:state* (atom nil)} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
+(invoke runtime :inc-3 0) ;; Returns a promise which will resolve to 3
 ```
 
 ### Composition
@@ -261,7 +261,7 @@ Pipelines can be composed with each other. This allows you to write small, focus
 
 (def runtime (start! {:state* (atom nil)} pipelines))
 
-(pipelines/invoke runtime :inc-3 0)                         ;; Returns a promise which will resolve to 5
+(invoke runtime :inc-3 0)                         ;; Returns a promise which will resolve to 5
 ```
 
 In this case, we've placed the `inc-2-pipeline` inside the `inc-3-pipeline` body, and the runtime will run it as expected.
@@ -457,7 +457,7 @@ Keechma/pipelines runtime can be stopped. When the runtime is stopped, all runni
 
 (def runtime (start! {} pipelines))
 
-(pipelines/invoke runtime :inc-3 0) ;; Returns 3
+(invoke runtime :inc-3 0) ;; Returns 3
 
 (stop! runtime) ;; Stops the runtime and cancels all running pipelines 
 ```
