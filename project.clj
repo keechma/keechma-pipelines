@@ -1,4 +1,4 @@
-(defproject keechma/pipelines "0.0.3"
+(defproject keechma/pipelines "0.0.4"
   :description "Manager for async and concurrent code in ClojureScript"
   :url "https://github.com/keechma/keechma-pipelines"
   :license {:name "MIT License"
