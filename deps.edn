@@ -1,7 +1,6 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.10.1"}
         org.clojure/clojurescript {:mvn/version "1.10.764"}
-        com.fulcrologic/guardrails {:mvn/version "0.0.12"}
         funcool/promesa {:mvn/version "5.1.0"}
         medley {:mvn/version "1.3.0"}
         org.clojure/core.async {:mvn/version "1.3.610"}}
