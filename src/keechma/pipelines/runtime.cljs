@@ -177,11 +177,11 @@
             (cond
               (error? value)
               (cond
-                (seq rescue) (recur :rescue pipeline prev-value prev-value value)
-                (seq finally) (recur :finally pipeline prev-value prev-value value)
+                (boolean rescue) (recur :rescue pipeline prev-value prev-value value)
+                (boolean finally) (recur :finally pipeline prev-value prev-value value)
                 :else [:error value])
 
-              (and (not (seq begin)) (seq finally))
+              (and (not (seq begin)) (boolean finally))
               (recur :finally pipeline prev-value value error)
 
               (not (seq begin))
@@ -196,10 +196,10 @@
             (cond
               (error? value)
               (cond
-                (seq finally) (recur :finally pipeline prev-value prev-value value)
+                (boolean finally) (recur :finally pipeline prev-value prev-value value)
                 :else [:error value])
 
-              (and (not (seq rescue)) (seq finally))
+              (and (not (seq rescue)) (boolean finally))
               (recur :finally pipeline prev-value value error)
 
               (not (seq rescue))

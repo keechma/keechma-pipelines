@@ -1187,3 +1187,63 @@
                    (is (= nil (keys (pp/get-active runtime))))
                    (stop! runtime)
                    (done))))))))
+
+(deftest runtime-should-not-report-error-if-rescue-block-exists-1
+  (let [error-log* (atom nil)
+        pipelines  {:test (pipeline! [_ _]
+                            (throw (ex-info "Error" {:is-error true}))
+                            (rescue! [err]))}
+        runtime (start! {} pipelines {:error-reporter #(reset! error-log* %)})]
+    (invoke runtime :test)
+    (is (nil? @error-log*))))
+
+(deftest runtime-should-not-report-error-if-rescue-block-exists-async-1
+  (let [error-log* (atom nil)
+        async-error (fn [err]
+                      (let [deferred (p/deferred)]
+                        (js/setTimeout #(p/reject! deferred err) 1)
+                        deferred))
+        pipelines  {:test (pipeline! [_ _]
+                            (async-error (ex-info "Error" {:is-error true}))
+                            (rescue! [err]))}
+        runtime (start! {} pipelines {:error-reporter #(reset! error-log* %)})]
+    (async done
+      (->> (invoke runtime :test)
+        (p/map (fn []
+                 (is (nil? @error-log*))
+                 (done)))
+        (p/error (fn []
+                   (is false)
+                   (done)))))))
+
+
+(deftest runtime-should-not-report-error-if-rescue-block-exists-2
+  (let [error-log* (atom nil)
+        pipelines  {:test (pipeline! [_ _]
+                            (throw (ex-info "Error" {:is-error true}))
+                            (rescue! [err]
+                              1))}
+        runtime (start! {} pipelines {:error-reporter #(reset! error-log* %)})]
+    (is (= 1 (invoke runtime :test)))
+    (is (nil? @error-log*))))
+
+(deftest runtime-should-not-report-error-if-rescue-block-exists-async-2
+  (let [error-log* (atom nil)
+        async-error (fn [err]
+                      (let [deferred (p/deferred)]
+                        (js/setTimeout #(p/reject! deferred err) 1)
+                        deferred))
+        pipelines  {:test (pipeline! [_ _]
+                            (async-error (ex-info "Error" {:is-error true}))
+                            (rescue! [err]
+                              1))}
+        runtime (start! {} pipelines {:error-reporter #(reset! error-log* %)})]
+    (async done
+      (->> (invoke runtime :test)
+        (p/map (fn [res]
+                 (is (= 1 res))
+                 (is (nil? @error-log*))
+                 (done)))
+        (p/error (fn []
+                   (is false)
+                   (done)))))))
