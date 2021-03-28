@@ -171,6 +171,11 @@
                                      :prev-value prev-value
                                      :error error})]
 
+          (pipeline? value)
+          (let [resumable (->resumable value nil prev-value)
+                res (invoke-resumable runtime resumable {:parent ident :interpreter-state (get-interpreter-state)})]
+            (recur block pipeline prev-value (real-value res prev-value) error))
+
           :else
           (case block
             :begin
