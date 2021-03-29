@@ -1248,7 +1248,7 @@
                    (is false)
                    (done)))))))
 
-(deftest it-should-be-possible-to-resolve-a-promise-with-pipeline
+(deftest it-should-be-possible-to-resolve-a-promise-with-pipeline-1
   (let [{:keys [state*] :as context} (make-context)
         inner-pipeline (pipeline! [value {:keys [state*]}]
                          (pp/swap! state* inc)
@@ -1273,6 +1273,33 @@
         (p/map (fn [res]
                  (is (= 11 res))
                  (is (= 12 @state*))
+                 (done)))
+        (p/error (fn []
+                   (is false)
+                   (done)))))))
+
+(deftest it-should-be-possible-to-resolve-a-promise-with-pipeline-2
+  (let [{:keys [state*] :as context} (make-context)
+        inner-pipeline (pipeline! [value {:keys [state*]}]
+                         (inc value))
+        fn-returning-pipeline (constantly inner-pipeline)
+        fn-returning-promise-resolved-to-pipeline (fn []
+                                                    (p/resolved inner-pipeline))
+        pipelines {:inc (pipeline! [value {:keys [state*]}]
+                          (inc value)
+                          (inc value)
+                          (inc value)
+                          inner-pipeline
+                          (fn-returning-pipeline)
+                          (fn-returning-promise-resolved-to-pipeline)
+                          (fn-returning-promise-resolved-to-pipeline)
+                          (inc value))}
+        runtime   (start! context pipelines)]
+    (is (nil? @state*))
+    (async done
+      (->> (invoke runtime :inc 1)
+        (p/map (fn [res]
+                 (is (= 9 res))
                  (done)))
         (p/error (fn []
                    (is false)
