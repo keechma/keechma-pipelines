@@ -53,10 +53,10 @@
 
 (defn make-pipeline [id pipeline]
   (map->Pipeline
-    {:id id
-     :pipeline pipeline
-     :config {:concurrency {:max js/Infinity}
-              :cancel-on-shutdown true}}))
+   {:id id
+    :pipeline pipeline
+    :config {:concurrency {:max js/Infinity}
+             :cancel-on-shutdown true}}))
 
 (defn in-pipeline? []
   (pos? *pipeline-depth*))
@@ -85,25 +85,25 @@
 (defn promise->chan [promise]
   (let [promise-chan (chan)]
     (->> promise
-      (p/map (fn [v]
-               (when v
-                 (put! promise-chan v))
-               (close! promise-chan)))
-      (p/error (fn [e]
-                 (put! promise-chan (as-error e))
-                 (close! promise-chan))))
+         (p/map (fn [v]
+                  (when v
+                    (put! promise-chan v))
+                  (close! promise-chan)))
+         (p/error (fn [e]
+                    (put! promise-chan (as-error e))
+                    (close! promise-chan))))
     promise-chan))
 
 (defn interpreter-state->resumable
   ([stack] (interpreter-state->resumable stack false))
   ([stack use-fresh-idents]
    (reduce
-     (fn [acc v]
-       (let [[pipeline-id instance-id] (:ident v)
-             ident (if use-fresh-idents (make-ident pipeline-id) [pipeline-id instance-id])]
-         (assoc (map->Resumable (assoc v :ident ident)) :tail acc)))
-     nil
-     stack)))
+    (fn [acc v]
+      (let [[pipeline-id instance-id] (:ident v)
+            ident (if use-fresh-idents (make-ident pipeline-id) [pipeline-id instance-id])]
+        (assoc (map->Resumable (assoc v :ident ident)) :tail acc)))
+    nil
+    stack)))
 
 (defn execute [runtime context ident action value error get-interpreter-state]
   (try
@@ -129,10 +129,10 @@
   (if-let [tail (:tail resumable)]
     (let [ident (:ident resumable)
           resumed-value
-                (invoke-resumable runtime tail {:parent ident :is-detached false :interpreter-state (:tail tail)})]
+          (invoke-resumable runtime tail {:parent ident :is-detached false :interpreter-state (:tail tail)})]
       (-> resumable
-        (assoc :tail nil)
-        (assoc-in [:state :value] resumed-value)))
+          (assoc :tail nil)
+          (assoc-in [:state :value] resumed-value)))
     resumable))
 
 (defn run-sync-block [runtime context resumable props]
@@ -297,14 +297,14 @@
 (defn get-existing [state resumable]
   (let [queue-name (get-resumable-queue-name resumable)]
     (->> (get-queue-queue state queue-name)
-      (filter
-        (fn [ident]
-          (let [instance (get-pipeline-instance state ident)]
-            (and (= (get-in instance [:resumable :id]) (:id resumable))
-              (= (get-in instance [:resumable :args]) (:args resumable))
-              (contains? live-states (:state instance))))))
-      first
-      (get-pipeline-instance state))))
+         (filter
+          (fn [ident]
+            (let [instance (get-pipeline-instance state ident)]
+              (and (= (get-in instance [:resumable :id]) (:id resumable))
+                   (= (get-in instance [:resumable :args]) (:args resumable))
+                   (contains? live-states (:state instance))))))
+         first
+         (get-pipeline-instance state))))
 
 (defn add-to-parent [state {:keys [ident]}]
   (let [instance     (get-pipeline-instance state ident)
@@ -347,15 +347,15 @@
   ([state resumable props] (register-instance state resumable props ::pending))
   ([state resumable props instance-state]
    (-> state
-     (add-to-queue resumable)
-     (assoc-in [:instances (:ident resumable)] {:state instance-state :resumable resumable :props props})
-     (add-to-parent resumable))))
+       (add-to-queue resumable)
+       (assoc-in [:instances (:ident resumable)] {:state instance-state :resumable resumable :props props})
+       (add-to-parent resumable))))
 
 (defn deregister-instance [state resumable]
   (-> state
-    (remove-from-queue resumable)
-    (remove-from-parent resumable)
-    (dissoc-in [:instances (:ident resumable)])))
+      (remove-from-queue resumable)
+      (remove-from-parent resumable)
+      (dissoc-in [:instances (:ident resumable)])))
 
 (defn queue-assoc-last-result [state resumable result]
   (let [queue-name (get-resumable-queue-name resumable)]
@@ -405,7 +405,7 @@
   (let [parent-instance (get-in @state* [:instances (get-in instance [:props :parent])])
         children        (get-in instance [:props :children])]
     (when (and (= ::waiting-children (:state parent-instance))
-            (not (seq children)))
+               (not (seq children)))
       (let [resumable (:resumable parent-instance)]
         (swap! state* deregister-instance resumable)
         (start-next-in-queue runtime (get-resumable-queue-name resumable))
@@ -420,8 +420,8 @@
           (swap! state* update-instance-state resumable ::waiting-children)
           (do (swap! state* (fn [state]
                               (-> state
-                                (queue-assoc-last resumable result)
-                                (deregister-instance resumable))))
+                                  (queue-assoc-last resumable result)
+                                  (deregister-instance resumable))))
               (cleanup-parents runtime instance)
               (start-next-in-queue runtime (get-resumable-queue-name resumable)))))))
   result)
@@ -443,11 +443,11 @@
                             e))]
     (if (p/promise? res)
       (->> deferred-result
-        (p/map #(finish-resumable runtime resumable %))
-        (p/error (fn [error]
-                   (report-error runtime error)
-                   (finish-resumable runtime resumable error)
-                   (p/rejected error))))
+           (p/map #(finish-resumable runtime resumable %))
+           (p/error (fn [error]
+                      (report-error runtime error)
+                      (finish-resumable runtime resumable error)
+                      (p/rejected error))))
       (do (if (error? res)
             (p/reject! deferred-result res)
             (p/resolve! deferred-result res))
@@ -459,10 +459,10 @@
         pipeline-config (get-in resumable [:config :concurrency])]
     (when (and queue-config (not= queue-config pipeline-config))
       (throw (ex-info "Pipeline's queue config is not matching queue's config"
-               {:pipeline (:ident resumable)
-                :queue queue-name
-                :queue-config queue-config
-                :pipeline-config pipeline-config})))))
+                      {:pipeline (:ident resumable)
+                       :queue queue-name
+                       :queue-config queue-config
+                       :pipeline-config pipeline-config})))))
 
 (defn process-resumable [{:keys [state*] :as runtime} resumable props]
   (cond
@@ -482,13 +482,13 @@
         canceller       (chan)
         is-detached     (get-in resumable [:config :is-detached])
         props           (merge
-                          {:interpreter-state []}
-                          pipeline-opts
-                          {:canceller canceller
-                           :ident (:ident resumable)
-                           :is-root (nil? parent)
-                           :deferred-result deferred-result
-                           :children #{}})
+                         {:interpreter-state []}
+                         pipeline-opts
+                         {:canceller canceller
+                          :ident (:ident resumable)
+                          :is-root (nil? parent)
+                          :deferred-result deferred-result
+                          :children #{}})
         state           @state*]
 
     (throw-if-queues-not-matching state resumable)
@@ -571,28 +571,28 @@
   (get-active [this]
     (let [state @state*]
       (reduce-kv
-        (fn [m k v]
-          (let [idents (:queue v)]
-            (if (seq idents)
-              (let [info (reduce
-                           (fn [acc ident]
-                             (assoc acc ident {:config (get-in state [:pipelines k :config])
-                                               :state (get-in state [:instances ident :state])
-                                               :args (get-in state [:instances ident :resumable :args])
-                                               :ident ident}))
-                           {}
-                           idents)]
-                (assoc m k info))
-              m)))
-        {}
-        (:queues state))))
+       (fn [m k v]
+         (let [idents (:queue v)]
+           (if (seq idents)
+             (let [info (reduce
+                         (fn [acc ident]
+                           (assoc acc ident {:config (get-in state [:pipelines k :config])
+                                             :state (get-in state [:instances ident :state])
+                                             :args (get-in state [:instances ident :resumable :args])
+                                             :ident ident}))
+                         {}
+                         idents)]
+               (assoc m k info))
+             m)))
+       {}
+       (:queues state))))
   (stop! [this]
     (remove-watch state* ::watcher)
     (let [instances (:instances @state*)
           cancellable-idents
-                    (->> instances
-                      (filter (fn [[_ v]] (get-in v [:resumable :config :cancel-on-shutdown])))
-                      (map first))]
+          (->> instances
+               (filter (fn [[_ v]] (get-in v [:resumable :config :cancel-on-shutdown])))
+               (map first))]
       (cancel-all this cancellable-idents)
       (reset! state* ::stopped))))
 

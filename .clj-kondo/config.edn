@@ -1,0 +1,3 @@
+{:lint-as {keechma.pipelines.core/pipeline! cljs.core/fn}
+ :linters {:unused-binding {:exclude-destructured-keys-in-fn-args true}
+           :unresolved-symbol {:exclude [(keechma.pipelines.core/pipeline!)]}}}
