@@ -527,7 +527,9 @@
   (invoke [this pipeline-name args]
     (invoke this pipeline-name args nil))
   (invoke [this pipeline-name args pipeline-opts]
-    (let [pipeline (get-in @state* [:pipelines pipeline-name])]
+    (let [pipeline (if (pipeline? pipeline-name)
+                     pipeline-name
+                     (get-in @state* [:pipelines pipeline-name]))]
       (invoke-resumable this (->resumable pipeline pipeline-name args) pipeline-opts)))
   (transact [_ transaction]
     (binding [*pipeline-depth* (inc *pipeline-depth*)]

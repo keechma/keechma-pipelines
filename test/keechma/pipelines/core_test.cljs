@@ -1302,3 +1302,13 @@
                 (p/error (fn []
                            (is false)
                            (done)))))))
+
+(deftest it-can-run-pipeline-without-registering-it-first
+  (let [{:keys [state*] :as context} (make-context)
+        p (pipeline! [value {:keys [state*]}]
+            (inc value)
+            (reset! state* value))
+        runtime (start! context {})
+        res (invoke runtime p 0)]
+    (is (= res 1))
+    (is (= 1 @state*))))
