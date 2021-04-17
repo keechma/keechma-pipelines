@@ -15,4 +15,5 @@
 /public/test/js
 pom.xml
 pom.xml.asc
-.clj-kondo/.cache
+/.clj-kondo/.cache
+/.lsp
