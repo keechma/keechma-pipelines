@@ -1312,3 +1312,26 @@
         res (invoke runtime p 0)]
     (is (= res 1))
     (is (= 1 @state*))))
+
+(deftest error-reporter-is-called-only-once-sync
+  (let [{:keys [state*] :as context} (make-context)
+        error-reporter-count* (atom 0)
+        p (pipeline! [value {:keys [state*]}]
+            (throw (ex-info "Error1" {})))
+        runtime (start! context {:p p} {:error-reporter (fn [_] (swap! error-reporter-count* inc))})]
+    (invoke runtime :p 0)
+    (is (= 1 @error-reporter-count*))))
+
+(deftest error-reporter-is-called-only-once-async
+  (let [{:keys [state*] :as context} (make-context)
+        error-reporter-count* (atom 0)
+        p (pipeline! [value {:keys [state*]}]
+            (p/delay 10)
+            (throw (ex-info "Error2" {})))
+        runtime (start! context {:p p} {:error-reporter (fn [_] (swap! error-reporter-count* inc))})]
+    (invoke runtime :p 0)
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 @error-reporter-count*))
+             (done)))))
