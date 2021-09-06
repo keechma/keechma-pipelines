@@ -3,6 +3,7 @@
             [keechma.pipelines.core :as pp :refer [start! stop! invoke] :refer-macros [pipeline!]]
             [keechma.pipelines.runtime :as runtime]
             [promesa.core :as p]
+            [clojure.string :as str]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]])
   (:require-macros [cljs.core.async.macros :refer [go alt!]]))
 
@@ -1334,4 +1335,42 @@
            (go
              (<! (timeout 20))
              (is (= 1 @error-reporter-count*))
+             (done)))))
+
+(deftest getting-ident-from-returned-promise
+  (let [{:keys [state*] :as context} (make-context)
+        p (pipeline! [value {:keys [state*]}]
+            (p/delay 10)
+            (reset! state* (inc value)))
+        runtime (start! context {:p p})
+        deferred (invoke runtime :p 1)]
+    (is (p/promise? deferred))
+    (let [[pipeline-name pipeline-id] (pp/get-ident deferred)
+          args (pp/get-args deferred)]
+      (is (= 1 args))
+      (is (= :p pipeline-name))
+      (is (= "pipeline" (namespace pipeline-id)))
+      (is (-> pipeline-id name (str/starts-with? "instance")))
+      (async done
+             (go
+               (<! (timeout 20))
+               (is (= @state* 2))
+               (done))))))
+
+(deftest cancelling-pipeline-by-returned-ident
+  (let [{:keys [state*] :as context} (make-context)
+        args* (atom nil)
+        p (pipeline! [value {:keys [state*]}]
+            (p/delay 10)
+            (reset! state* value))
+        runtime (start! context {:p p} {:on-cancel (fn [_ deferred] (reset! args* (pp/get-args deferred)))})
+        deferred (invoke runtime :p :foo)]
+    (is (p/promise? deferred))
+
+    (pp/cancel runtime (pp/get-ident deferred))
+
+    (async done
+           (go
+             (<! (timeout 1))
+             (is (= @args* (pp/get-args deferred) :foo))
              (done)))))

@@ -13,6 +13,9 @@
 (def cancel runtime/cancel)
 (def cancel-all runtime/cancel-all)
 
+(def get-ident runtime/get-ident)
+(def get-args runtime/get-args)
+
 (defn set-queue
   "Explicitly set the queue name. Second argument can be a function in which case, it will be called with the pipeline arguments and should return a queue name"
   [pipeline queue]

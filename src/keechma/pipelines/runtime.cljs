@@ -14,7 +14,7 @@
   (invoke [this pipeline] [this pipeline args] [this pipeline args config])
   (cancel [this ident])
   (cancel-all [this idents])
-  (on-cancel [this promise])
+  (on-cancel [this promise deferred-result])
   (wait [this ident])
   (wait-all [this idents])
   (transact [this transact-fn])
@@ -29,6 +29,10 @@
 
 (defprotocol IResumable
   (->pipeline [this]))
+
+(defprotocol IPipelineInstance
+  (get-ident [this])
+  (get-args [this]))
 
 (defrecord Resumable [id ident config args state tail]
   IResumable
@@ -251,7 +255,7 @@
             (cond
               (or (= ::cancelled (:state (get-pipeline-instance* runtime ident))) (= canceller c))
               (do
-                (on-cancel runtime (:value state))
+                (on-cancel runtime (:value state) deferred-result)
                 nil)
 
               (= ::cancelled value)
@@ -322,7 +326,7 @@
 
 (defn add-to-queue [state resumable]
   (let [ident      (:ident resumable)
-        queue-name (or (get-resumable-queue-name resumable))
+        queue-name (get-resumable-queue-name resumable)
         queue      (or (get-queue state queue-name) {:config (get-in resumable [:config :concurrency]) :queue []})]
     (assoc-in state [:queues queue-name] (assoc queue :queue (conj (:queue queue) ident)))))
 
@@ -432,7 +436,7 @@
     (cancel-all runtime queued-idents-to-cancel)
     (:deferred-result props)))
 
-(defn start-resumable [{:keys [state* context] :as runtime} {:keys [ident] :as resumable}]
+(defn start-resumable [{:keys [state* context] :as runtime} {:keys [ident args] :as resumable}]
   (swap! state* update-instance-state resumable ::running)
   (let [props           (:props (get-pipeline-instance @state* ident))
         deferred-result (:deferred-result props)
@@ -442,12 +446,16 @@
                             (report-error runtime e)
                             e))]
     (if (p/promise? res)
-      (->> deferred-result
-           (p/map #(finish-resumable runtime resumable %))
-           (p/error (fn [error]
-                      (report-error runtime error)
-                      (finish-resumable runtime resumable error)
-                      (p/rejected error))))
+      (let [res-promise (->> deferred-result
+                             (p/map #(finish-resumable runtime resumable %))
+                             (p/error (fn [error]
+                                        (report-error runtime error)
+                                        (finish-resumable runtime resumable error)
+                                        (p/rejected error))))]
+        (specify! res-promise
+                  IPipelineInstance
+                  (get-ident [_] ident)
+                  (get-args [_] args)))
       (do (if (error? res)
             (p/reject! deferred-result res)
             (p/resolve! deferred-result res))
@@ -476,9 +484,12 @@
     :else
     (enqueue-resumable runtime resumable props)))
 
-(defn invoke-resumable [runtime resumable {:keys [parent] :as pipeline-opts}]
+(defn invoke-resumable [runtime {:keys [ident args] :as resumable} {:keys [parent] :as pipeline-opts}]
   (let [{:keys [state*]} runtime
-        deferred-result (p/deferred)
+        deferred-result (specify! (p/deferred)
+                                  IPipelineInstance
+                                  (get-ident [_] ident)
+                                  (get-args [_] args))
         canceller       (chan)
         is-detached     (get-in resumable [:config :is-detached])
         props           (merge
@@ -564,9 +575,9 @@
                                     (recur rest-idents-to-cancel queues-to-refresh)))))]
       (doseq [queue-name queues-to-refresh]
         (start-next-in-queue this queue-name))))
-  (on-cancel [_ promise]
+  (on-cancel [_ promise deferred-result]
     (let [on-cancel (:on-cancel opts)]
-      (on-cancel promise)))
+      (on-cancel promise deferred-result)))
   (cancel-all [this idents]
     (doseq [ident idents]
       (cancel this ident)))
