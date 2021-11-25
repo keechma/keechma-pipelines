@@ -1374,3 +1374,89 @@
              (<! (timeout 1))
              (is (= @args* (pp/get-args deferred) :foo))
              (done)))))
+
+(deftest error-reporting-sync-1
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (throw (ex-info "Error" {})))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        result (invoke runtime :p :foo)]
+    (is (= "Error" (ex-message result)))
+    (is (true? @error-reported*))))
+
+(deftest error-reporting-sync-2
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (pipeline! [_ _]
+              (throw (ex-info "Error" {}))))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        result (invoke runtime :p :foo)]
+    (is (= "Error" (ex-message result)))
+    (is (true? @error-reported*))))
+
+(deftest error-reporting-async-1
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (p/delay 1)
+            (throw (ex-info "Error" {})))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        deferred (invoke runtime :p :foo)]
+    (async done
+           (->> deferred
+                (p/map (fn [_]
+                         (is false)
+                         (done)))
+                (p/error (fn [err]
+                           (is (= "Error" (ex-message err)))
+                           (is @error-reported*)
+                           (done)))))))
+
+(deftest error-reporting-async-2
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (pipeline! [_ _]
+              (p/delay 1)
+              (throw (ex-info "Error" {}))))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        deferred (invoke runtime :p :foo)]
+    (async done
+           (->> deferred
+                (p/map (fn [_]
+                         (is false)
+                         (done)))
+                (p/error (fn [err]
+                           (is (= "Error" (ex-message err)))
+                           (is @error-reported*)
+                           (done)))))))
+
+(deftest do-not-report-errors-for-inner-pipeline-if-outer-has-rescue-block-sync
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (pipeline! [_ _]
+              (throw (ex-info "Error" {})))
+            (rescue! [error]
+              :rescued))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        deferred (invoke runtime :p :foo)]
+    (is (= :rescued deferred))
+    (is (false? @error-reported*))))
+
+(deftest do-not-report-errors-for-inner-pipeline-if-outer-has-rescue-block-async
+  (let [error-reported* (atom false)
+        p (pipeline! [_ _]
+            (pipeline! [_ _]
+              (p/delay 1)
+              (throw (ex-info "Error" {})))
+            (rescue! [error]
+              :rescued))
+        runtime (start! {} {:p p} {:error-reporter #(reset! error-reported* true)})
+        deferred (invoke runtime :p :foo)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (false? @error-reported*))
+                         (is (= :rescued value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))

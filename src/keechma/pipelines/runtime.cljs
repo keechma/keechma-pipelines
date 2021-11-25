@@ -439,17 +439,20 @@
 (defn start-resumable [{:keys [state* context] :as runtime} {:keys [ident args] :as resumable}]
   (swap! state* update-instance-state resumable ::running)
   (let [props           (:props (get-pipeline-instance @state* ident))
+        has-parent      (:parent props)
         deferred-result (:deferred-result props)
         res             (try
                           (start-interpreter runtime context resumable props)
                           (catch :default e
-                            (report-error runtime e)
+                            (when-not has-parent
+                              (report-error runtime e))
                             e))]
     (if (p/promise? res)
       (let [res-promise (->> deferred-result
                              (p/map #(finish-resumable runtime resumable %))
                              (p/error (fn [error]
-                                        (report-error runtime error)
+                                        (when-not has-parent
+                                          (report-error runtime error))
                                         (finish-resumable runtime resumable error)
                                         (p/rejected error))))]
         (specify! res-promise
