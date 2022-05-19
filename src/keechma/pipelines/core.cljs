@@ -12,6 +12,8 @@
 (def get-active runtime/get-active)
 (def cancel runtime/cancel)
 (def cancel-all runtime/cancel-all)
+(def break runtime/break)
+(def break-all runtime/break-all)
 
 (def get-ident runtime/get-ident)
 (def get-args runtime/get-args)

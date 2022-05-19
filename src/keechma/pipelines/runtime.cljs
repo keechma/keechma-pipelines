@@ -52,6 +52,8 @@
                              :pipeline pipeline
                              :value value}})))
 
+(defrecord Break [value should-break-all])
+
 (defn make-ident [pipeline-id]
   [pipeline-id (keyword "pipeline" (gensym 'instance))])
 
@@ -163,6 +165,12 @@
         (cond
           (= ::cancelled value)
           [:result value]
+
+          (= Break (type value))
+          (let [value' (real-value (:value value) prev-value)]
+            (if (:should-break-all value)
+              [:result (assoc value :value value')]
+              [:result value']))
 
           (resumable? value)
           [:resumable-state value]
@@ -416,10 +424,10 @@
         (recur runtime parent-instance)))))
 
 (defn finish-resumable [{:keys [state*] :as runtime} {:keys [ident] :as resumable} result]
-  (when (get-pipeline-instance @state* ident)
-    (if (= ::cancelled result)
-      (cancel runtime ident)
-      (let [instance (get-pipeline-instance @state* ident)]
+  (let [instance (get-pipeline-instance @state* ident)]
+    (when instance
+      (if (= ::cancelled result)
+        (cancel runtime ident)
         (if (seq (get-in instance [:props :children]))
           (swap! state* update-instance-state resumable ::waiting-children)
           (do (swap! state* (fn [state]
@@ -427,8 +435,13 @@
                                   (queue-assoc-last resumable result)
                                   (deregister-instance resumable))))
               (cleanup-parents runtime instance)
-              (start-next-in-queue runtime (get-resumable-queue-name resumable)))))))
-  result)
+              (start-next-in-queue runtime (get-resumable-queue-name resumable))))))
+    (if (and
+         (or (nil? instance)
+             (get-in instance [:props :is-root]))
+         (= Break (type result)))
+      (:value result)
+      result)))
 
 (defn enqueue-resumable [{:keys [state*] :as runtime} resumable props]
   (let [queued-idents-to-cancel (get-queued-idents-to-cancel @state* (get-resumable-queue-name resumable))]
@@ -611,6 +624,16 @@
                (map first))]
       (cancel-all this cancellable-idents)
       (reset! state* ::stopped))))
+
+(defn break
+  ([] (break nil))
+  ([value]
+   (->Break value false)))
+
+(defn break-all
+  ([] (break-all nil))
+  ([value]
+   (->Break value true)))
 
 (defn default-transactor [transaction]
   (transaction))

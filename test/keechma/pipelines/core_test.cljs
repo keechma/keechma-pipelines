@@ -47,7 +47,7 @@
         p       (pipeline! [value {:keys [state*]}]
                   (pp/reset! state* value))
         runtime (start! context {:p p})]
-    (is (= 1) (invoke runtime :p 1))
+    (is (= 1 (invoke runtime :p 1)))
     (is (= 1 @state*))))
 
 (deftest basic-pipeline-2 []
@@ -56,7 +56,7 @@
                   (pipeline! [value {:keys [state*]}]
                     (pp/reset! state* value)))
         runtime (start! context {:p p})]
-    (is (= 1) (invoke runtime :p 1))
+    (is (= 1 (invoke runtime :p 1)))
     (is (= 1 @state*))))
 
 (deftest basic-pipeline-3 []
@@ -1456,6 +1456,171 @@
                 (p/map (fn [value]
                          (is (false? @error-reported*))
                          (is (= :rescued value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+(deftest break-pipeline-1
+  (let [p (pipeline! [_ _]
+            1
+            (pp/break)
+            2)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 1 res))))
+
+(deftest break-pipeline-2
+  (let [p (pipeline! [_ _]
+            1
+            (pp/break 33)
+            2)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 33 res))))
+
+(deftest break-pipeline-3
+  (let [p (pipeline! [_ _]
+            1
+            (pipeline! [_ _]
+              (pp/break 33)
+              2)
+            3)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 3 res))))
+
+(deftest break-all-pipeline-1
+  (let [p (pipeline! [_ _]
+            1
+            (pp/break-all)
+            2)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 1 res))))
+
+(deftest break-all-pipeline-2
+  (let [p (pipeline! [_ _]
+            1
+            (pp/break-all 33)
+            2)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 33 res))))
+
+(deftest break-all-pipeline-3
+  (let [p (pipeline! [_ _]
+            1
+            (pipeline! [_ _]
+              (pp/break-all 33)
+              2)
+            3)
+        runtime (start! {} {:p p} {})
+        res (invoke runtime :p nil)]
+    (is (= 33 res))))
+
+(deftest async-break-pipeline-1
+  (let [p (pipeline! [_ _]
+            1
+            (->> (p/delay 1)
+                 (p/map #(pp/break)))
+            2)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 1 value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+(deftest async-break-pipeline-2
+  (let [p (pipeline! [_ _]
+            1
+            (->> (p/delay 1)
+                 (p/map #(pp/break 33)))
+            2)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 33 value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+(deftest async-break-pipeline-3
+  (let [p (pipeline! [_ _]
+            1
+            (pipeline! [_ _]
+              (->> (p/delay 1)
+                   (p/map #(pp/break 33)))
+              2)
+            3)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 3 value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+
+(deftest async-break-all-pipeline-1
+  (let [p (pipeline! [_ _]
+            1
+            (->> (p/delay 1)
+                 (p/map #(pp/break-all)))
+            2)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 1 value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+(deftest async-break-all-pipeline-2
+  (let [p (pipeline! [_ _]
+            1
+            (->> (p/delay 1)
+                 (p/map #(pp/break-all 33)))
+            2)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 33 value))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
+
+(deftest async-break-all-pipeline-3
+  (let [p (pipeline! [_ _]
+            1
+            (pipeline! [_ _]
+              (->> (p/delay 1)
+                   (p/map #(pp/break-all 33)))
+              2)
+            3)
+        runtime (start! {} {:p p} {})
+        deferred (invoke runtime :p nil)]
+    (async done
+           (->> deferred
+                (p/map (fn [value]
+                         (is (= 33 value))
                          (done)))
                 (p/error (fn [_]
                            (is false)
