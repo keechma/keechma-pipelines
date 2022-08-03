@@ -1625,3 +1625,26 @@
                 (p/error (fn [_]
                            (is false)
                            (done)))))))
+
+(deftest dropping-with-custom-queue
+  (let [processed* (atom {})
+        p (-> (pipeline! [value _]
+                (p/delay 5)
+                (swap! processed* update (:id value) inc))
+              (pp/dropping)
+              (pp/set-queue #(:id %)))
+        runtime (start! {} {:p p} {})
+        bucket [{:id 1 :value :a}
+                {:id 1 :value :b}
+                {:id 1 :value :c}
+                {:id 2 :value :a}
+                {:id 2 :value :b}
+                {:id 3 :value :a}]]
+    (async done
+           (->> (p/all (map (fn [e] (invoke runtime :p e)) bucket))
+                (p/map (fn [_]
+                         (is (= @processed* {1 1, 2 1, 3 1}))
+                         (done)))
+                (p/error (fn [_]
+                           (is false)
+                           (done)))))))
