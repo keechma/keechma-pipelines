@@ -12,11 +12,11 @@
 
 (s/def ::pipeline-body
   (s/and list?
-         (s/or
-          :begin-rescue-finally (s/cat :begin (s/* any?) :rescue ::rescue :finally ::finally)
-          :begin-finally (s/cat :begin (s/* any?) :finally ::finally)
-          :begin-rescue (s/cat :begin (s/* any?) :rescue ::rescue)
-          :begin (s/cat :begin (s/* any?)))))
+    (s/or
+      :begin-rescue-finally (s/cat :begin (s/* any?) :rescue ::rescue :finally ::finally)
+      :begin-finally (s/cat :begin (s/* any?) :finally ::finally)
+      :begin-rescue (s/cat :begin (s/* any?) :rescue ::rescue)
+      :begin (s/cat :begin (s/* any?)))))
 
 (s/def ::pipeline-args
   (s/coll-of :clojure.core.specs.alpha/binding-form :kind vector? :count 2))
@@ -26,22 +26,22 @@
 
 (s/def ::rescue
   (s/and list?
-         (s/cat :rescue rescue?
-                :args ::rescue-finally-args
-                :body (s/* any?))))
+    (s/cat :rescue rescue?
+      :args ::rescue-finally-args
+      :body (s/* any?))))
 
 (s/def ::finally
   (s/and list?
-         (s/cat :finally finally?
-                :args ::rescue-finally-args
-                :body (s/* any?))))
+    (s/cat :finally finally?
+      :args ::rescue-finally-args
+      :body (s/* any?))))
 
 (defn expand-body [args body]
   (->> (map
-        (fn [f]
-          `(fn ~args ~f))
-        body)
-       (into [])))
+         (fn [f]
+           `(fn ~args ~f))
+         body)
+    (into [])))
 
 (defn make-pipeline [_ _])
 
@@ -64,11 +64,11 @@
   (let [[_ conformed-body] (s/conform ::pipeline-body body)
         id (keyword (gensym ::pipeline))]
     `(keechma.pipelines.core/make-pipeline
-      ~id
-      ~(-> {}
-           (begin-forms args conformed-body)
-           (rescue-finally-forms :rescue args conformed-body)
-           (rescue-finally-forms :finally args conformed-body)))))
+       ~id
+       ~(-> {}
+          (begin-forms args conformed-body)
+          (rescue-finally-forms :rescue args conformed-body)
+          (rescue-finally-forms :finally args conformed-body)))))
 
 (defmacro pipeline! [args & body]
   (prepare-pipeline args (or body `())))
